@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Menu Admin Panel</title>
+    <style>
+        :root {
+            --bg-main: #111;
+            --bg-card: #222;
+            --primary: #e69129;
+            --primary-hover: #ffaa3d;
+            --danger: #992222;
+            --danger-hover: #bd2d2d;
+            --text-main: #fff;
+            --text-muted: #aaa;
+            --border: #333;
+        }
+
+        body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg-main); color: var(--text-main); padding: 40px; margin: 0; }
+        .box { max-width: 550px; margin: 0 auto; background: var(--bg-card); padding: 30px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid var(--border); }
+        h2 { margin-top: 0; font-size: 24px; border-bottom: 2px solid var(--border); padding-bottom: 10px; }
+
+        .hidden { display: none !important; }
+
+        label { display: block; margin: 12px 0 6px; font-size: 14px; color: var(--text-muted); font-weight: 600; }
+        input, button, textarea, select { width: 100%; padding: 12px; margin-bottom: 10px; box-sizing: border-box; border-radius: 6px; border: 1px solid var(--border); background: #1a1a1a; color: #fff; font-size: 15px; }
+        input:focus, select:focus, textarea:focus { outline: 2px solid var(--primary); border-color: transparent; }
+        
+        button { background: var(--primary); border: none; color: white; font-weight: bold; cursor: pointer; transition: background 0.2s; }
+        button:hover { background: var(--primary-hover); }
+        
+        .btn-danger { background: var(--danger); margin-top: 5px; }
+        .btn-danger:hover { background: var(--danger-hover); }
+        .btn-secondary { background: #333; color: #eee; margin-top: 15px; }
+        .btn-secondary:hover { background: #444; }
+        
+        .password-wrapper { position: relative; }
+        .password-wrapper input { padding-right: 50px; }
+        #toggle-password { position: absolute; right: 5px; top: 0; width: 40px; height: 47px; background: none; border: none; color: #888; font-size: 18px; cursor: pointer; }
+        
+        .preview-category-title { color: var(--primary); font-weight: bold; margin-top: 25px; font-size: 16px; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px dashed var(--border); padding-bottom: 5px; }
+        .preview-item { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding: 12px 0; animation: fadeIn 0.3s ease; }
+        .preview-details small { color: var(--text-muted); display: block; margin-top: 4px; }
+        
+        .delete-btn { background: none; border: none; color: #666; font-size: 22px; cursor: pointer; width: auto; margin: 0; padding: 0 10px; transition: color 0.2s; }
+        .delete-btn:hover { color: #ff4444; }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="login-block" class="box">
+        <h2>Admin Panel Login</h2>
+        <p style="color: var(--text-muted); font-size: 14px;">For HR: default password is <b>admin123</b></p>
+        <div class="password-wrapper">
+            <input type="password" id="pass-input" placeholder="Enter password">
+            <button type="button" id="toggle-password" tabindex="-1">&#128065;</button>
+        </div>
+        <button id="login-btn" style="margin-top: 10px;">Login</button> 
+        <p id="error-msg" style="color: #ff4444; font-size: 14px; margin-top: 10px;"></p>
+    </div>
+
+    <div id="admin-panel" class="box hidden">
+        <h2>Menu Management</h2>
+        
+        <form id="dish-form" onsubmit="event.preventDefault(); addDish();">
+            <label>Category *</label>
+            <select id="dish-category">
+                <option value="drinks">Drinks</option>
+                <option value="main">Main Course</option>
+                <option value="secondary">Secondary Course</option>
+            </select>
+
+            <label>Dish Title *</label>
+            <input type="text" id="dish-title" placeholder="your name" required>
+            
+            <label>Price *</label>
+            <input type="text" id="dish-price" placeholder="your price" required>
+            
+            <label>Description</label>
+            <textarea id="dish-desc" placeholder="your data" rows="3"></textarea>
+            
+            <button type="submit">Add to Menu</button>
+        </form>
+        
+        <button onclick="resetToDemo()" class="btn-secondary">Reset to Large Demo (6, 8, 5)</button>
+        <button onclick="clearMenu()" class="btn-danger">Clear All Menu</button>
+        
+        <h3>Current Menu Preview</h3>
+        <div id="preview-list"></div>
+    </div>
+
+    <script>
+const targetToken = "YWRtaW4xMjM=";
+const API_URL = "http://127.0.0.1:8000/api/menu";
+
+document.getElementById('toggle-password').addEventListener('click', function () {
+    const passwordInput = document.getElementById('pass-input');
+    if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        this.innerHTML = '&#128065;';
+    } else {
+        passwordInput.type = 'password';
+        this.innerHTML = '&#128065;';
+    }
+    passwordInput.focus(); 
+});
+
+document.getElementById('login-btn').addEventListener('click', () => {
+    const password = document.getElementById('pass-input').value;
+    const errorMsg = document.getElementById('error-msg');
+
+    if (btoa(password) === targetToken) {
+        document.getElementById('login-block').classList.add('hidden');
+        document.getElementById('admin-panel').classList.remove('hidden');
+        updatePreview();
+    } else {
+        errorMsg.innerText = "Incorrect password!";
+    }
+});
+
+async function addDish() {
+    const titleInput = document.getElementById('dish-title');
+    const priceInput = document.getElementById('dish-price');
+    const descInput = document.getElementById('dish-desc');
+
+    const cleanPrice = parseFloat(priceInput.value.replace(/[^0-9.]/g, ''));
+
+    if (isNaN(cleanPrice)) {
+        alert("Please enter a valid numeric price.");
+        return;
+    }
+
+    const newDish = {
+        name: titleInput.value.trim(),
+        price: cleanPrice,
+        description: descInput.value.trim(),
+        image_url: "https://tse1.mm.bing.net/th/id/OIP.0QpNtb2cE5OZTjFN2NQULQHaFC?r=0&rs=1&pid=ImgDetMain&o=7&rm=3"
+    };
+
+    try {
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(newDish)
+        });
+
+        if (!response.ok) {
+            throw new Error(`Server responded with status: ${response.status}`);
+        }
+
+        document.getElementById('dish-form').reset();
+        await updatePreview();
+
+    } catch (error) {
+        console.error("Failed to add dish:", error);
+        alert("Failed to sync with backend server.");
+    }
+}
+
+async function updatePreview() {
+    const container = document.getElementById('preview-list');
+
+    try {
+        const response = await fetch(API_URL);
+        
+        if (!response.ok) {
+            throw new Error(`Server responded with status: ${response.status}`);
+        }
+
+        const menu = await response.json();
+
+        if (menu.length === 0) {
+            container.innerHTML = '<p style="color: var(--text-muted); text-align: center; margin-top: 20px;">The menu is completely empty.</p>';
+            return;
+        }
+
+        let html = '<div class="preview-category-title">Main Course</div>';
+        
+        menu.forEach(dish => {
+            html += `
+                <div class="preview-item">
+                    <div class="preview-details">
+                        <b>${dish.name}</b> — ${dish.price} €
+                        <small>${dish.description || 'No description'}</small>
+                    </div>
+                    <button class="delete-btn" onclick="deleteDish(${dish.id})">&times;</button>
+                </div>
+            `;
+        });
+
+        container.innerHTML = html;
+
+    } catch (error) {
+        console.error("Failed to load preview:", error);
+        container.innerHTML = '<p style="color: #ff4444; text-align: center; margin-top: 20px;">Failed to load preview from server.</p>';
+    }
+}
+
+async function deleteDish(id) {
+    try {
+        const response = await fetch(`${API_URL}/${id}`, {
+            method: 'DELETE'
+        });
+
+        if (!response.ok) {
+            throw new Error(`Server responded with status: ${response.status}`);
+        }
+
+        await updatePreview();
+
+    } catch (error) {
+        console.error("Failed to delete dish:", error);
+        alert("Failed to delete item from server.");
+    }
+}
+
+async function resetToDemo() {
+    if(confirm('Reload the large demo template? Current custom edits will be overwritten.')) {
+        try {
+            const response = await fetch(`${API_URL}/reset`, {
+                method: 'POST'
+            });
+
+            if (!response.ok) {
+                throw new Error(`Server responded with status: ${response.status}`);
+            }
+
+            await updatePreview();
+
+        } catch (error) {
+            console.error("Failed to reset menu:", error);
+            alert("Failed to reset database items.");
+        }
+    }
+}
+
+async function clearMenu() {
+    if(confirm('Are you sure you want to delete the ENTIRE menu?')) {
+        try {
+            const response = await fetch(API_URL, {
+                method: 'DELETE'
+            });
+
+            if (!response.ok) {
+                throw new Error(`Server responded with status: ${response.status}`);
+            }
+
+            await updatePreview();
+
+        } catch (error) {
+            console.error("Failed to clear menu:", error);
+            alert("Failed to delete items from server.");
+        }
+    }
+}
+</script>
+</body>
+</html>
