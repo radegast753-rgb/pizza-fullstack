@@ -428,7 +428,8 @@ async function renderMenu() {
     if (!drinksContainer || !mainContainer || !secondaryContainer) return;
 
     try {
-        const response = await fetch('https://firstrestaurant.onrender.com');
+        // ДОБАВЛЕНО /menu В КОНЕЦ СТРОКИ ЗАПРОСА
+        const response = await fetch('https://firstrestaurant.onrender.com/api/menu');
         
         if (!response.ok) {
             throw new Error(`Ошибка сервера: ${response.status}`);

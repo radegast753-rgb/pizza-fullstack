@@ -97,7 +97,7 @@
 
     <script>
 const targetToken = "YWRtaW4xMjM=";
-const API_URL = "https://firstrestaurant.onrender.com";
+const API_URL = "https://firstrestaurant.onrender.com/api";
 
 document.getElementById('toggle-password').addEventListener('click', function () {
     const passwordInput = document.getElementById('pass-input');
@@ -144,7 +144,7 @@ async function addDish() {
     };
 
     try {
-        const response = await fetch(API_URL, {
+        const response = await fetch(`${API_URL}/menu`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -169,7 +169,7 @@ async function updatePreview() {
     const container = document.getElementById('preview-list');
 
     try {
-        const response = await fetch(API_URL);
+        const response = await fetch(`${API_URL}/menu`);
         
         if (!response.ok) {
             throw new Error(`Server responded with status: ${response.status}`);
@@ -206,7 +206,7 @@ async function updatePreview() {
 
 async function deleteDish(id) {
     try {
-        const response = await fetch(`${API_URL}/${id}`, {
+        const response = await fetch(`${API_URL}/menu/${id}`, {
             method: 'DELETE'
         });
 
@@ -225,7 +225,7 @@ async function deleteDish(id) {
 async function resetToDemo() {
     if(confirm('Reload the large demo template? Current custom edits will be overwritten.')) {
         try {
-            const response = await fetch(`${API_URL}/reset`, {
+            const response = await fetch(`${API_URL}/menu/reset`, {
                 method: 'POST'
             });
 
@@ -245,7 +245,7 @@ async function resetToDemo() {
 async function clearMenu() {
     if(confirm('Are you sure you want to delete the ENTIRE menu?')) {
         try {
-            const response = await fetch(API_URL, {
+            const response = await fetch(`${API_URL}/menu`, {
                 method: 'DELETE'
             });
 
