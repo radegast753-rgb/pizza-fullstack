@@ -73,7 +73,7 @@
             <select id="dish-category">
                 <option value="drinks">Drinks</option>
                 <option value="main">Main Course</option>
-                <option value="secondary">Secondary Course</option>
+                <option value="secondary">Starters & Sides</option>
             </select>
 
             <label>Dish Title *</label>
@@ -103,7 +103,7 @@ document.getElementById('toggle-password').addEventListener('click', function ()
     const passwordInput = document.getElementById('pass-input');
     if (passwordInput.type === 'password') {
         passwordInput.type = 'text';
-        this.innerHTML = '&#128065;';
+        this.innerHTML = '&#12514;';
     } else {
         passwordInput.type = 'password';
         this.innerHTML = '&#128065;';
@@ -128,9 +128,9 @@ async function addDish() {
     const titleInput = document.getElementById('dish-title');
     const priceInput = document.getElementById('dish-price');
     const descInput = document.getElementById('dish-desc');
+    const categorySelect = document.getElementById('dish-category');
 
     const cleanPrice = parseFloat(priceInput.value.replace(/[^0-9.]/g, ''));
-
     if (isNaN(cleanPrice)) {
         alert("Please enter a valid numeric price.");
         return;
@@ -140,40 +140,34 @@ async function addDish() {
         name: titleInput.value.trim(),
         price: cleanPrice,
         description: descInput.value.trim(),
+        category: categorySelect.value,
         image_url: "https://tse1.mm.bing.net/th/id/OIP.0QpNtb2cE5OZTjFN2NQULQHaFC?r=0&rs=1&pid=ImgDetMain&o=7&rm=3"
     };
 
     try {
         const response = await fetch(`${API_URL}/menu`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(newDish)
         });
 
-        if (!response.ok) {
-            throw new Error(`Server responded with status: ${response.status}`);
-        }
+        if (!response.ok) throw new Error(`Status: ${response.status}`);
 
         document.getElementById('dish-form').reset();
         await updatePreview();
-
     } catch (error) {
-        console.error("Failed to add dish:", error);
+        console.error(error);
         alert("Failed to sync with backend server.");
     }
 }
 
 async function updatePreview() {
     const container = document.getElementById('preview-list');
+    if (!container) return;
 
     try {
         const response = await fetch(`${API_URL}/menu`);
-        
-        if (!response.ok) {
-            throw new Error(`Server responded with status: ${response.status}`);
-        }
+        if (!response.ok) throw new Error(`Status: ${response.status}`);
 
         const menu = await response.json();
 
@@ -182,42 +176,47 @@ async function updatePreview() {
             return;
         }
 
-        let html = '<div class="preview-category-title">Main Course</div>';
-        
-        menu.forEach(dish => {
-            html += `
-                <div class="preview-item">
-                    <div class="preview-details">
-                        <b>${dish.name}</b> — ${dish.price} €
-                        <small>${dish.description || 'No description'}</small>
-                    </div>
-                    <button class="delete-btn" onclick="deleteDish(${dish.id})">&times;</button>
-                </div>
-            `;
-        });
+        const categories = { drinks: 'Drinks', main: 'Main Course', secondary: 'Starters & Sides' };
+        let html = '';
 
+        for (let catKey in categories) {
+            const catDishes = menu.filter(d => {
+                const cat = String(d.category).toLowerCase();
+                if (catKey === 'secondary') {
+                    return cat.includes('secondary') || cat.includes('start') || cat.includes('side');
+                }
+                return cat.includes(catKey);
+            });
+
+            if (catDishes.length > 0) {
+                html += `<div class="preview-category-title">${categories[catKey]}</div>`;
+                catDishes.forEach(dish => {
+                    html += `
+                        <div class="preview-item">
+                            <div class="preview-details">
+                                <b>${dish.name}</b> — ${dish.price} €
+                                <small>${dish.description || 'No description'}</small>
+                            </div>
+                            <button class="delete-btn" onclick="deleteDish(${dish.id})">&times;</button>
+                        </div>
+                    `;
+                });
+            }
+        }
         container.innerHTML = html;
-
     } catch (error) {
-        console.error("Failed to load preview:", error);
+        console.error(error);
         container.innerHTML = '<p style="color: #ff4444; text-align: center; margin-top: 20px;">Failed to load preview from server.</p>';
     }
 }
 
 async function deleteDish(id) {
     try {
-        const response = await fetch(`${API_URL}/menu/${id}`, {
-            method: 'DELETE'
-        });
-
-        if (!response.ok) {
-            throw new Error(`Server responded with status: ${response.status}`);
-        }
-
+        const response = await fetch(`${API_URL}/menu/${id}`, { method: 'DELETE' });
+        if (!response.ok) throw new Error(`Status: ${response.status}`);
         await updatePreview();
-
     } catch (error) {
-        console.error("Failed to delete dish:", error);
+        console.error(error);
         alert("Failed to delete item from server.");
     }
 }
@@ -225,18 +224,11 @@ async function deleteDish(id) {
 async function resetToDemo() {
     if(confirm('Reload the large demo template? Current custom edits will be overwritten.')) {
         try {
-            const response = await fetch(`${API_URL}/menu/reset`, {
-                method: 'POST'
-            });
-
-            if (!response.ok) {
-                throw new Error(`Server responded with status: ${response.status}`);
-            }
-
+            const response = await fetch(`${API_URL}/menu/reset`, { method: 'POST' });
+            if (!response.ok) throw new Error(`Status: ${response.status}`);
             await updatePreview();
-
         } catch (error) {
-            console.error("Failed to reset menu:", error);
+            console.error(error);
             alert("Failed to reset database items.");
         }
     }
@@ -245,23 +237,15 @@ async function resetToDemo() {
 async function clearMenu() {
     if(confirm('Are you sure you want to delete the ENTIRE menu?')) {
         try {
-            const response = await fetch(`${API_URL}/menu`, {
-                method: 'DELETE'
-            });
-
-            if (!response.ok) {
-                throw new Error(`Server responded with status: ${response.status}`);
-            }
-
+            const response = await fetch(`${API_URL}/menu`, { method: 'DELETE' });
+            if (!response.ok) throw new Error(`Status: ${response.status}`);
             await updatePreview();
-
         } catch (error) {
-            console.error("Failed to clear menu:", error);
+            console.error(error);
             alert("Failed to delete items from server.");
         }
     }
 }
-
 </script>
 </body>
 </html>
