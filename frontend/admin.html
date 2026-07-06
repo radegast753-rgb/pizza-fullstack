@@ -125,12 +125,24 @@ document.getElementById('login-btn').addEventListener('click', () => {
 });
 
 async function addDish() {
-    console.log("ADD DISH CALLED");
+     console.log("1");
+
+    const titleInput = document.getElementById('dish-title');
+    console.log("2");
+
+    const priceInput = document.getElementById('dish-price');
+    console.log("3");
+
+    const descInput = document.getElementById('dish-desc');
+    console.log("4");
+
+    const categorySelect = document.getElementById('dish-category');
+    console.log("5");
 
     const titleInput = document.getElementById('dish-title');
     const priceInput = document.getElementById('dish-price');
     const descInput = document.getElementById('dish-desc');
-    const categorySelect = document.getElementById('dish-category');
+    const categorySelect = document.getElementById('category');
 
     const cleanPrice = parseFloat(priceInput.value.replace(/[^0-9.]/g, ''));
     if (isNaN(cleanPrice)) {
