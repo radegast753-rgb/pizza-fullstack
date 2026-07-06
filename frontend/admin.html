@@ -97,49 +97,27 @@
 
 <script>
 const API_URL = "https://firstrestaurant.onrender.com/api";
-const targetToken = "YWRtaW4xMjM=";
 
-/* LOGIN */
-document.getElementById('login-btn').addEventListener('click', () => {
-    const password = document.getElementById('pass-input').value;
-
-    if (btoa(password) === targetToken) {
-        document.getElementById('login-block').classList.add('hidden');
-        document.getElementById('admin-panel').classList.remove('hidden');
-        updatePreview();
-    } else {
-        document.getElementById('error-msg').innerText = "Wrong password";
-    }
-});
-
-/* TOGGLE PASSWORD */
-document.getElementById('toggle-password').addEventListener('click', function () {
-    const input = document.getElementById('pass-input');
-    input.type = input.type === 'password' ? 'text' : 'password';
-});
-
-/* ADD DISH */
 async function addDish() {
-    const title = document.getElementById('dish-title').value.trim();
-    const priceRaw = document.getElementById('dish-price').value;
-    const desc = document.getElementById('dish-desc').value.trim();
-    const category = document.getElementById('category').value; // FIXED
+    const title = document.getElementById("dish-title");
+    const price = document.getElementById("dish-price");
+    const desc = document.getElementById("dish-desc");
+    const category = document.getElementById("category");
 
-    const price = parseFloat(priceRaw.replace(/[^0-9.]/g, ''));
-    if (isNaN(price)) {
-        alert("Invalid price");
+    const cleanPrice = parseFloat(price.value);
+
+    if (!title.value || isNaN(cleanPrice)) {
+        alert("Invalid input");
         return;
     }
 
     const newDish = {
-        name: title,
-        price: price,
-        description: desc,
-        category: category,
-        image_url: "https://example.com/image.jpg"
+        name: title.value.trim(),
+        price: cleanPrice,
+        description: desc.value.trim(),
+        category: category.value,
+        image_url: ""
     };
-
-    console.log("SENDING:", newDish);
 
     try {
         const res = await fetch(`${API_URL}/menu`, {
@@ -148,60 +126,17 @@ async function addDish() {
             body: JSON.stringify(newDish)
         });
 
-        if (!res.ok) throw new Error(await res.text());
+        if (!res.ok) throw new Error("API error");
 
-        document.getElementById('dish-form').reset();
-        updatePreview();
+        title.value = "";
+        price.value = "";
+        desc.value = "";
 
-    } catch (err) {
-        console.error("ADD ERROR:", err);
-        alert("Backend error");
-    }
-}
-
-/* PREVIEW */
-async function updatePreview() {
-    const container = document.getElementById('preview-list');
-
-    try {
-        const res = await fetch(`${API_URL}/menu`);
-        const menu = await res.json();
-
-        console.log("MENU:", menu);
-
-        if (!menu.length) {
-            container.innerHTML = "<p>Empty menu</p>";
-            return;
-        }
-
-        container.innerHTML = menu.map(d => `
-            <div class="preview-item">
-                <b>${d.name}</b> — ${d.price} €
-                <small>${d.category || 'no category'}</small>
-            </div>
-        `).join('');
+        await updatePreview();
 
     } catch (e) {
         console.error(e);
     }
-}
-
-/* DELETE */
-async function deleteDish(id) {
-    await fetch(`${API_URL}/menu/${id}`, { method: "DELETE" });
-    updatePreview();
-}
-
-/* RESET */
-async function resetToDemo() {
-    await fetch(`${API_URL}/menu/reset`, { method: "POST" });
-    updatePreview();
-}
-
-/* CLEAR */
-async function clearMenu() {
-    await fetch(`${API_URL}/menu`, { method: "DELETE" });
-    updatePreview();
 }
 </script>
 </body>

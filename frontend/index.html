@@ -371,53 +371,94 @@
     }
 </style>
 
+<section class="menu-section" id="menu-section">
+    <h2 class="menu-title">
+        Our <span style="color: #e69129;">Menu</span>
+    </h2>
+
+    <div id="main-menu-flex" class="menu-columns-container">
+        <div class="menu-column">
+            <h3 class="menu-column-title">Drinks</h3>
+            <div id="menu-drinks" class="menu-items-stack"></div>
+        </div>
+
+        <div class="menu-column">
+            <h3 class="menu-column-title">Main Course</h3>
+            <div id="menu-main" class="menu-items-stack"></div>
+        </div>
+
+        <div class="menu-column">
+            <h3 class="menu-column-title">Starters</h3>
+            <div id="menu-starters" class="menu-items-stack"></div>
+        </div>
+    </div>
+
+    <div id="empty-menu-msg" style="display:none; text-align:center; color:#666; font-family:sans-serif; margin-top:40px;">
+        Our chefs are updating the menu.
+    </div>
+</section>
+
 <script>
 const API_URL = "https://firstrestaurant.onrender.com/api";
 
+const norm = (v) => (v || "").trim().toLowerCase();
+
+function card(d) {
+    return `
+        <div class="menu-card">
+            <h4>${d.name || ""}</h4>
+            <p>${d.description || ""}</p>
+            <b>${d.price ?? ""} €</b>
+        </div>
+    `;
+}
+
 async function renderMenu() {
-    const drinks = document.getElementById('menu-drinks');
-    const main = document.getElementById('menu-main');
-    const side = document.getElementById('menu-secondary');
+    const drinksBox = document.getElementById("menu-drinks");
+    const mainBox = document.getElementById("menu-main");
+    const startersBox = document.getElementById("menu-starters");
+    const flex = document.getElementById("main-menu-flex");
+    const empty = document.getElementById("empty-menu-msg");
+
+    if (!drinksBox || !mainBox || !startersBox || !flex || !empty) {
+        console.error("❌ Missing menu containers in HTML");
+        return;
+    }
 
     try {
         const res = await fetch(`${API_URL}/menu`);
+        if (!res.ok) throw new Error("HTTP error " + res.status);
+
         const menu = await res.json();
 
-        console.log("MENU FRONT:", menu);
+        console.log("MENU:", menu);
 
-        if (!menu || menu.length === 0) {
-            drinks.innerHTML = main.innerHTML = side.innerHTML = "No data";
+        if (!Array.isArray(menu) || menu.length === 0) {
+            flex.style.display = "none";
+            empty.style.display = "block";
             return;
         }
 
-        const safe = (x) => (x || "").toLowerCase();
+        flex.style.display = "flex";
+        empty.style.display = "none";
 
-        drinks.innerHTML = menu
-            .filter(d => safe(d.category).includes("drink"))
-            .map(d => `<div class="menu-card"><h4>${d.name}</h4><p>${d.description}</p><b>${d.price}€</b></div>`)
-            .join("");
+		const drinks = menu.filter(d => d.category === "menu-drinks");
+		const main = menu.filter(d => d.category === "menu-main");
+		const starters = menu.filter(d => d.category === "menu-starters");
 
-        main.innerHTML = menu
-            .filter(d => safe(d.category).includes("main"))
-            .map(d => `<div class="menu-card"><h4>${d.name}</h4><p>${d.description}</p><b>${d.price}€</b></div>`)
-            .join("");
-
-        side.innerHTML = menu
-            .filter(d =>
-                safe(d.category).includes("side") ||
-                safe(d.category).includes("start")
-            )
-            .map(d => `<div class="menu-card"><h4>${d.name}</h4><p>${d.description}</p><b>${d.price}€</b></div>`)
-            .join("");
+        drinksBox.innerHTML = drinks.map(card).join("");
+        mainBox.innerHTML = main.map(card).join("");
+        startersBox.innerHTML = starters.map(card).join("");
 
     } catch (err) {
         console.error("LOAD ERROR:", err);
+        flex.style.display = "none";
+        empty.style.display = "block";
     }
 }
 
-window.addEventListener("DOMContentLoaded", renderMenu);
+window.addEventListener("load", renderMenu);
 </script>
-</div>
 
 <section class="contacts-section">
     <div class="contacts-container" id="contacts-section">

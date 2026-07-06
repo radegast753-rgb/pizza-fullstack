@@ -7,34 +7,12 @@ from typing import List
 from fastapi.middleware.cors import CORSMiddleware
 
 DATABASE_URL = "sqlite:///./pizza.db"
+
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
 Base = declarative_base()
 
-class PizzaItem(Base):
-    __tablename__ = "menu"
-
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, index=True)
-    price = Column(Float)
-    description = Column(String)
-    image_url = Column(String)
-
-Base.metadata.create_all(bind=engine)
-
-class PizzaCreate(BaseModel):
-    name: str
-    price: float
-    description: str
-    image_url: str
-
-class PizzaResponse(PizzaCreate):
-    id: int
-
-    class Config:
-        from_attributes = True
-
-app = FastAPI(title="Pizza Restaurant API")
+app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
@@ -44,6 +22,34 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ---------------- DB MODEL ----------------
+class PizzaItem(Base):
+    __tablename__ = "menu"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String)
+    price = Column(Float)
+    description = Column(String)
+    image_url = Column(String)
+    category = Column(String)
+
+Base.metadata.create_all(bind=engine)
+
+# ---------------- SCHEMAS ----------------
+class PizzaCreate(BaseModel):
+    name: str
+    price: float
+    description: str
+    image_url: str
+    category: str
+
+class PizzaResponse(PizzaCreate):
+    id: int
+
+    class Config:
+        from_attributes = True
+
+# ---------------- DB ----------------
 def get_db():
     db = SessionLocal()
     try:
@@ -51,47 +57,30 @@ def get_db():
     finally:
         db.close()
 
+# ---------------- API ----------------
 @app.get("/api/menu", response_model=List[PizzaResponse])
-async def get_menu(db: Session = Depends(get_db)):
-    items = db.query(PizzaItem).all()
-    return items
+def get_menu(db: Session = Depends(get_db)):
+    return db.query(PizzaItem).all()
 
 @app.post("/api/menu", response_model=PizzaResponse)
-async def create_pizza(pizza: PizzaCreate, db: Session = Depends(get_db)):
-    new_pizza = PizzaItem(
-        name=pizza.name,
-        price=pizza.price,
-        description=pizza.description,
-        image_url=pizza.image_url
-    )
-    db.add(new_pizza)
+def create_item(item: PizzaCreate, db: Session = Depends(get_db)):
+    obj = PizzaItem(**item.dict())
+    db.add(obj)
     db.commit()
-    db.refresh(new_pizza)
-    return new_pizza
+    db.refresh(obj)
+    return obj
+
+@app.delete("/api/menu/{item_id}")
+def delete_item(item_id: int, db: Session = Depends(get_db)):
+    obj = db.query(PizzaItem).filter(PizzaItem.id == item_id).first()
+    if not obj:
+        raise HTTPException(status_code=404, detail="Not found")
+    db.delete(obj)
+    db.commit()
+    return {"ok": True}
 
 @app.delete("/api/menu")
-def clear_all_menu(db: Session = Depends(get_db)):
+def clear(db: Session = Depends(get_db)):
     db.query(PizzaItem).delete()
     db.commit()
-    return {"message": "All items deleted successfully"}
-
-@app.delete("/api/menu/{pizza_id}")
-def delete_pizza(pizza_id: int, db: Session = Depends(get_db)):
-    pizza = db.query(PizzaItem).filter(PizzaItem.id == pizza_id).first()
-    if not pizza:
-        raise HTTPException(status_code=404, detail="Item not found")
-    db.delete(pizza)
-    db.commit()
-    return {"message": "Item deleted successfully"}
-
-@app.post("/api/menu/reset")
-def reset_to_demo_db(db: Session = Depends(get_db)):
-    db.query(PizzaItem).delete()
-    demo_items = [
-        PizzaItem(name="Espresso", price=3.00, description="Rich and intense classic black coffee", image_url="https://tse1.mm.bing.net/th/id/OIP.0QpNtb2cE5OZTjFN2NQULQHaFC?r=0&rs=1&pid=ImgDetMain&o=7&rm=3"),
-        PizzaItem(name="Pizza Margherita", price=12.00, description="Classic fresh tomato sauce and melted mozzarella", image_url="https://tse1.mm.bing.net/th/id/OIP.0QpNtb2cE5OZTjFN2NQULQHaFC?r=0&rs=1&pid=ImgDetMain&o=7&rm=3"),
-        PizzaItem(name="Caesar Salad", price=9.50, description="Crispy romaine, parmesan, croutons, and creamy dressing", image_url="https://tse1.mm.bing.net/th/id/OIP.0QpNtb2cE5OZTjFN2NQULQHaFC?r=0&rs=1&pid=ImgDetMain&o=7&rm=3")
-    ]
-    db.add_all(demo_items)
-    db.commit()
-    return {"message": "Demo items loaded successfully"}
+    return {"ok": True}
