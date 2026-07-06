@@ -95,170 +95,113 @@
         <div id="preview-list"></div>
     </div>
 
-    <script>
-const targetToken = "YWRtaW4xMjM=";
+<script>
 const API_URL = "https://firstrestaurant.onrender.com/api";
+const targetToken = "YWRtaW4xMjM=";
 
-document.getElementById('toggle-password').addEventListener('click', function () {
-    const passwordInput = document.getElementById('pass-input');
-    if (passwordInput.type === 'password') {
-        passwordInput.type = 'text';
-        this.innerHTML = '&#12514;';
-    } else {
-        passwordInput.type = 'password';
-        this.innerHTML = '&#128065;';
-    }
-    passwordInput.focus(); 
-});
-
+/* LOGIN */
 document.getElementById('login-btn').addEventListener('click', () => {
     const password = document.getElementById('pass-input').value;
-    const errorMsg = document.getElementById('error-msg');
 
     if (btoa(password) === targetToken) {
         document.getElementById('login-block').classList.add('hidden');
         document.getElementById('admin-panel').classList.remove('hidden');
         updatePreview();
     } else {
-        errorMsg.innerText = "Incorrect password!";
+        document.getElementById('error-msg').innerText = "Wrong password";
     }
 });
 
+/* TOGGLE PASSWORD */
+document.getElementById('toggle-password').addEventListener('click', function () {
+    const input = document.getElementById('pass-input');
+    input.type = input.type === 'password' ? 'text' : 'password';
+});
+
+/* ADD DISH */
 async function addDish() {
-     console.log("1");
+    const title = document.getElementById('dish-title').value.trim();
+    const priceRaw = document.getElementById('dish-price').value;
+    const desc = document.getElementById('dish-desc').value.trim();
+    const category = document.getElementById('category').value; // FIXED
 
-    const titleInput = document.getElementById('dish-title');
-    console.log("2");
-
-    const priceInput = document.getElementById('dish-price');
-    console.log("3");
-
-    const descInput = document.getElementById('dish-desc');
-    console.log("4");
-
-    const categorySelect = document.getElementById('dish-category');
-    console.log("5");
-
-    const titleInput = document.getElementById('dish-title');
-    const priceInput = document.getElementById('dish-price');
-    const descInput = document.getElementById('dish-desc');
-    const categorySelect = document.getElementById('category');
-
-    const cleanPrice = parseFloat(priceInput.value.replace(/[^0-9.]/g, ''));
-    if (isNaN(cleanPrice)) {
-        alert("Please enter a valid numeric price.");
+    const price = parseFloat(priceRaw.replace(/[^0-9.]/g, ''));
+    if (isNaN(price)) {
+        alert("Invalid price");
         return;
     }
 
     const newDish = {
-        name: titleInput.value.trim(),
-        price: cleanPrice,
-        description: descInput.value.trim(),
-        category: categorySelect.value,
-        image_url: "https://tse1.mm.bing.net/th/id/OIP.0QpNtb2cE5OZTjFN2NQULQHaFC?r=0&rs=1&pid=ImgDetMain&o=7&rm=3"
+        name: title,
+        price: price,
+        description: desc,
+        category: category,
+        image_url: "https://example.com/image.jpg"
     };
 
+    console.log("SENDING:", newDish);
+
     try {
-        const response = await fetch(`${API_URL}/menu`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+        const res = await fetch(`${API_URL}/menu`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(newDish)
         });
 
-        if (!response.ok) throw new Error(`Status: ${response.status}`);
+        if (!res.ok) throw new Error(await res.text());
 
         document.getElementById('dish-form').reset();
-        await updatePreview();
-    } catch (error) {
-        console.error(error);
-        alert("Failed to sync with backend server.");
+        updatePreview();
+
+    } catch (err) {
+        console.error("ADD ERROR:", err);
+        alert("Backend error");
     }
 }
 
+/* PREVIEW */
 async function updatePreview() {
     const container = document.getElementById('preview-list');
-    if (!container) return;
 
     try {
-        const response = await fetch(`${API_URL}/menu`);
-        if (!response.ok) throw new Error(`Status: ${response.status}`);
+        const res = await fetch(`${API_URL}/menu`);
+        const menu = await res.json();
 
-        const menu = await response.json();
+        console.log("MENU:", menu);
 
-        if (menu.length === 0) {
-            container.innerHTML = '<p style="color: var(--text-muted); text-align: center; margin-top: 20px;">The menu is completely empty.</p>';
+        if (!menu.length) {
+            container.innerHTML = "<p>Empty menu</p>";
             return;
         }
 
-        const categories = { drinks: 'Drinks', main: 'Main Course', secondary: 'Starters & Sides' };
-        let html = '';
+        container.innerHTML = menu.map(d => `
+            <div class="preview-item">
+                <b>${d.name}</b> — ${d.price} €
+                <small>${d.category || 'no category'}</small>
+            </div>
+        `).join('');
 
-        for (let catKey in categories) {
-            const catDishes = menu.filter(d => {
-                const cat = String(d.category).toLowerCase();
-                if (catKey === 'secondary') {
-                    return cat.includes('secondary') || cat.includes('start') || cat.includes('side');
-                }
-                return cat.includes(catKey);
-            });
-
-            if (catDishes.length > 0) {
-                html += `<div class="preview-category-title">${categories[catKey]}</div>`;
-                catDishes.forEach(dish => {
-                    html += `
-                        <div class="preview-item">
-                            <div class="preview-details">
-                                <b>${dish.name}</b> — ${dish.price} €
-                                <small>${dish.description || 'No description'}</small>
-                            </div>
-                            <button class="delete-btn" onclick="deleteDish(${dish.id})">&times;</button>
-                        </div>
-                    `;
-                });
-            }
-        }
-        container.innerHTML = html;
-    } catch (error) {
-        console.error(error);
-        container.innerHTML = '<p style="color: #ff4444; text-align: center; margin-top: 20px;">Failed to load preview from server.</p>';
+    } catch (e) {
+        console.error(e);
     }
 }
 
+/* DELETE */
 async function deleteDish(id) {
-    try {
-        const response = await fetch(`${API_URL}/menu/${id}`, { method: 'DELETE' });
-        if (!response.ok) throw new Error(`Status: ${response.status}`);
-        await updatePreview();
-    } catch (error) {
-        console.error(error);
-        alert("Failed to delete item from server.");
-    }
+    await fetch(`${API_URL}/menu/${id}`, { method: "DELETE" });
+    updatePreview();
 }
 
+/* RESET */
 async function resetToDemo() {
-    if(confirm('Reload the large demo template? Current custom edits will be overwritten.')) {
-        try {
-            const response = await fetch(`${API_URL}/menu/reset`, { method: 'POST' });
-            if (!response.ok) throw new Error(`Status: ${response.status}`);
-            await updatePreview();
-        } catch (error) {
-            console.error(error);
-            alert("Failed to reset database items.");
-        }
-    }
+    await fetch(`${API_URL}/menu/reset`, { method: "POST" });
+    updatePreview();
 }
 
+/* CLEAR */
 async function clearMenu() {
-    if(confirm('Are you sure you want to delete the ENTIRE menu?')) {
-        try {
-            const response = await fetch(`${API_URL}/menu`, { method: 'DELETE' });
-            if (!response.ok) throw new Error(`Status: ${response.status}`);
-            await updatePreview();
-        } catch (error) {
-            console.error(error);
-            alert("Failed to delete items from server.");
-        }
-    }
+    await fetch(`${API_URL}/menu`, { method: "DELETE" });
+    updatePreview();
 }
 </script>
 </body>

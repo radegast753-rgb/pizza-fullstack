@@ -371,94 +371,51 @@
     }
 </style>
 
-<section class="menu-section" id="menu-section">
-    <h2 class="menu-title">
-        Our <span style="color: #e69129;">Menu</span>
-    </h2>
-    
-    <div id="main-menu-flex" class="menu-columns-container">
-        <div class="menu-column">
-            <h3 class="menu-column-title">Drinks</h3>
-            <div id="menu-drinks" class="menu-items-stack"></div>
-        </div>
-
-        <div class="menu-column">
-            <h3 class="menu-column-title">Main Course</h3>
-            <div id="menu-main" class="menu-items-stack"></div>
-        </div>
-
-        <div class="menu-column">
-            <h3 class="menu-column-title">Starters & Sides</h3>
-            <div id="menu-secondary" class="menu-items-stack"></div>
-        </div>
-    </div>
-    
-    <div id="empty-menu-msg" style="display: none; text-align: center; color: #666; font-family: sans-serif; font-size: 18px; margin-top: 40px;">
-        Our chefs are updating the menu. Please come back later!
-    </div>
-</section>
-
-<div>
 <script>
-if (history.scrollRestoration) {
-    history.scrollRestoration = 'manual';
-}
-
-window.addEventListener('beforeunload', function() {
-    window.scrollTo(0, 0);
-});
-
-function createCardHtml(dish, index) {
-    const delay = index * 0.05;
-    return `
-        <div class="menu-card" style="animation-delay: ${delay}s">
-            <h4>${dish.name}</h4>
-            <p>${dish.description ? dish.description : 'No description available'}</p>
-            <div class="menu-card-price">${dish.price} €</div>
-        </div>
-    `;
-}
+const API_URL = "https://firstrestaurant.onrender.com/api";
 
 async function renderMenu() {
-    const drinksContainer = document.getElementById('menu-drinks');
-    const mainContainer = document.getElementById('menu-main');
-    const secondaryContainer = document.getElementById('menu-secondary');
-    const flexContainer = document.getElementById('main-menu-flex');
-    const emptyMsg = document.getElementById('empty-menu-msg');
-
-    if (!drinksContainer || !mainContainer || !secondaryContainer) return;
+    const drinks = document.getElementById('menu-drinks');
+    const main = document.getElementById('menu-main');
+    const side = document.getElementById('menu-secondary');
 
     try {
-        const response = await fetch('https://firstrestaurant.onrender.com/api/menu');
-        if (!response.ok) throw new Error(`Status: ${response.status}`);
-        
-        const menu = await response.json();
+        const res = await fetch(`${API_URL}/menu`);
+        const menu = await res.json();
 
-        if (menu.length === 0) {
-            flexContainer.style.display = 'none';
-            emptyMsg.style.display = 'block';
+        console.log("MENU FRONT:", menu);
+
+        if (!menu || menu.length === 0) {
+            drinks.innerHTML = main.innerHTML = side.innerHTML = "No data";
             return;
         }
 
-        flexContainer.style.display = 'flex';
-        emptyMsg.style.display = 'none';
+        const safe = (x) => (x || "").toLowerCase();
 
-        drinksContainer.innerHTML = menu.filter(d => String(d.category).toLowerCase().includes('drink')).map((d, i) => createCardHtml(d, i)).join('');
-        mainContainer.innerHTML = menu.filter(d => String(d.category).toLowerCase().includes('main')).map((d, i) => createCardHtml(d, i)).join('');
-        secondaryContainer.innerHTML = menu.filter(d => {
-            const cat = String(d.category).toLowerCase();
-            return cat.includes('second') || cat.includes('start') || cat.includes('side');
-        }).map((d, i) => createCardHtml(d, i)).join('');
+        drinks.innerHTML = menu
+            .filter(d => safe(d.category).includes("drink"))
+            .map(d => `<div class="menu-card"><h4>${d.name}</h4><p>${d.description}</p><b>${d.price}€</b></div>`)
+            .join("");
 
-    } catch (error) {
-        console.error(error);
-        flexContainer.style.display = 'none';
-        emptyMsg.style.display = 'block';
+        main.innerHTML = menu
+            .filter(d => safe(d.category).includes("main"))
+            .map(d => `<div class="menu-card"><h4>${d.name}</h4><p>${d.description}</p><b>${d.price}€</b></div>`)
+            .join("");
+
+        side.innerHTML = menu
+            .filter(d =>
+                safe(d.category).includes("side") ||
+                safe(d.category).includes("start")
+            )
+            .map(d => `<div class="menu-card"><h4>${d.name}</h4><p>${d.description}</p><b>${d.price}€</b></div>`)
+            .join("");
+
+    } catch (err) {
+        console.error("LOAD ERROR:", err);
     }
 }
 
-window.addEventListener('DOMContentLoaded', renderMenu);
-window.addEventListener('pageshow', renderMenu);
+window.addEventListener("DOMContentLoaded", renderMenu);
 </script>
 </div>
 
